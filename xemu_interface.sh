@@ -46,13 +46,21 @@ converter_jogos() {
     echo -e "${AMARELO}Conversão concluída. Arquivos salvos em ~/converted_xiso.${NC}"
 }
 
-# Função para listar e iniciar jogos
+# Função para listar e iniciar jogos da pasta /storage/emulated/0/Download/XEMU/
 iniciar_jogo() {
-    echo -e "${AZUL}Jogos disponíveis:${NC}"
-    select jogo in ~/converted_xiso/*.xiso; do
+    echo -e "${AZUL}Jogos disponíveis em /storage/emulated/0/Download/XEMU/:${NC}"
+    jogos=$(ls /storage/emulated/0/Download/XEMU/*.iso)
+    if [[ -z "$jogos" ]]; then
+        echo -e "${VERMELHO}Nenhum jogo encontrado na pasta de jogos.${NC}"
+        return
+    fi
+
+    select jogo in $jogos; do
         if [[ -n "$jogo" ]]; then
             echo -e "${AMARELO}Iniciando $jogo...${NC}"
             xemu -dvd_path "$jogo"
+            # Remover logs após execução
+            rm -f /storage/emulated/0/Download/XEMU/*.log
             break
         else
             echo -e "${VERMELHO}Seleção inválida. Tente novamente.${NC}"
