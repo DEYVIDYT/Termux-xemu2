@@ -15,7 +15,7 @@ instalar_xemu() {
         apt update -y && \
         apt upgrade -y && \
         termux-setup-storage >/dev/null && \
-        apt install -y --no-install-recommends wget openbox && \
+        apt install -y --no-install-recommends wget && \
         wget -O xemu-arm64.deb "https://github.com/George-Seven/Termux-XEMU/releases/latest/download/xemu-arm64.deb" && \
         apt install -y ./xemu-arm64.deb && \
         rm xemu-arm64.deb
