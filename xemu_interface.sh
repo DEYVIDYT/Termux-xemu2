@@ -13,20 +13,18 @@ instalar_xemu() {
     if ! command -v xemu &> /dev/null; then
         echo -e "${AMARELO}XEMU não encontrado. Iniciando instalação...${NC}"
 
-        # Instalar pacotes necessários no Termux
-        pkg update
-        pkg upgrade
-        pkg install x11-repo
-        pkg install tigervnc
-        pkg install x
-term
+        # Atualizar e instalar pacotes necessários
+        echo -e "${AMARELO}Atualizando pacotes...${NC}"
+        apt update && apt upgrade -y
+
+        echo -e "${AMARELO}Instalando pacotes necessários...${NC}"
+        apt install -y x11-repo tigervnc xterm
 
         # Instalar dependências adicionais e o XEMU
-        apt update -y && \
-        yes | apt upgrade -y && \
-        yes | termux-setup-storage >/dev/null && \
-        apt install -y --no-install-recommends wget openbox && \
-        wget -O xemu-arm64.deb "https://github.com/George-Seven/Termux-XEMU/releases/latest/download/xemu-arm64.deb" && \
+        echo -e "${AMARELO}Instalando o XEMU...${NC}"
+        apt install -y --no-install-recommends wget openbox
+
+        wget -O xemu-arm64.deb "https://github.com/George-Seven/Termux-XEMU/releases/latest/download/xemu-arm64.deb"
         apt install ./xemu-arm64.deb
 
         echo -e "${VERDE}Instalação do XEMU concluída.${NC}"
