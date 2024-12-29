@@ -1,89 +1,88 @@
 #!/bin/bash
 
-# Função para verificar e instalar pacotes, se necessário
-instalar_pacote() {
-    if ! command -v "$1" &> /dev/null; then
-        echo "Instalando $1..."
-        pkg install -y "$1"
+# Definir cores
+VERDE='\033[0;32m'
+AMARELO='\033[1;33m'
+AZUL='\033[0;34m'
+VERMELHO='\033[0;31m'
+NC='\033[0m' # Sem cor
+
+# Função para verificar e instalar o XEMU
+instalar_xemu() {
+    echo -e "${AZUL}Verificando a instalação do XEMU...${NC}"
+    if ! command -v xemu &> /dev/null; then
+        echo -e "${AMARELO}XEMU não encontrado. Iniciando instalação...${NC}"
+        apt update -y && \
+        apt upgrade -y && \
+        termux-setup-storage >/dev/null && \
+        apt install -y --no-install-recommends wget openbox && \
+        wget -O xemu-arm64.deb "https://github.com/George-Seven/Termux-XEMU/releases/latest/download/xemu-arm64.deb" && \
+        apt install -y ./xemu-arm64.deb && \
+        rm xemu-arm64.deb
+        echo -e "${VERDE}Instalação do XEMU concluída.${NC}"
     else
-        echo "$1 já está instalado."
+        echo -e "${VERDE}XEMU já está instalado.${NC}"
     fi
 }
 
-# Atualiza os pacotes e instala dependências necessárias
-pkg update && pkg upgrade -y
-instalar_pacote git
-instalar_pacote wget
-
-# Clona o repositório Termux-XEMU, se ainda não existir
-if [ ! -d "$HOME/Termux-XEMU" ]; then
-    echo "Clonando o repositório Termux-XEMU..."
-    git clone https://github.com/George-Seven/Termux-XEMU.git "$HOME/Termux-XEMU"
-else
-    echo "O repositório Termux-XEMU já existe."
-fi
-
-# Navega até o diretório do projeto e executa o script de instalação
-cd "$HOME/Termux-XEMU"
-if [ -f "install.sh" ]; then
-    chmod +x install.sh
-    ./install.sh
-else
-    echo "Script install.sh não encontrado. Certifique-se de que o repositório foi clonado corretamente."
-    exit 1
-fi
-
-# Cria o script de interface para conversão e execução de jogos
-cat << 'EOF' > "$HOME/xemu_interface.sh"
-#!/bin/bash
-
-# Função para converter ISOs para XISO
-converter_isos() {
-    echo "Convertendo ISOs para XISO..."
+# Função para converter jogos para XISO usando iso2xiso
+converter_jogos() {
+    echo -e "${AMARELO}Iniciando a conversão de jogos para XISO...${NC}"
+    mkdir -p ~/converted_xiso
     for iso in /storage/emulated/0/Download/XEMU/*.iso; do
-        [ -e "$iso" ] || continue
-        iso2xiso "$iso" "${iso%.iso}.xiso"
-        echo "Convertido: $iso"
+        if [[ -f "$iso" && ! -f "~/converted_xiso/$(basename "$iso" .iso).xiso" ]]; then
+            nome_jogo=$(basename "$iso" .iso)
+            echo -e "${AZUL}Convertendo: $iso para ~/converted_xiso/${nome_jogo}.xiso...${NC}"
+            iso2xiso "$iso" "~/converted_xiso/${nome_jogo}.xiso"
+            if [[ $? -eq 0 ]]; then
+                echo -e "${VERDE}Convertido: $iso para ~/converted_xiso/${nome_jogo}.xiso${NC}"
+                rm "$iso"  # Deleta a ISO original após conversão
+                echo -e "${VERDE}Deletado o arquivo ISO original: $iso${NC}"
+            else
+                echo -e "${VERMELHO}Erro na conversão de $iso${NC}"
+            fi
+        fi
+    done
+    echo -e "${AMARELO}Conversão concluída. Arquivos salvos em ~/converted_xiso.${NC}"
+}
+
+# Função para listar e iniciar jogos
+iniciar_jogo() {
+    echo -e "${AZUL}Jogos disponíveis:${NC}"
+    select jogo in ~/converted_xiso/*.xiso; do
+        if [[ -n "$jogo" ]]; then
+            echo -e "${AMARELO}Iniciando $jogo...${NC}"
+            xemu -dvd_path "$jogo"
+            break
+        else
+            echo -e "${VERMELHO}Seleção inválida. Tente novamente.${NC}"
+        fi
     done
 }
 
-# Função para listar e iniciar um jogo
-iniciar_jogo() {
-    echo "Jogos disponíveis:"
-    select jogo in /storage/emulated/0/Download/XEMU/*.xiso; do
-        [ -e "$jogo" ] || { echo "Seleção inválida."; continue; }
-        echo "Iniciando o jogo: $jogo"
-        xemu -dvd_path "$jogo"
-        break
-    done
-}
+# Verificar e instalar o XEMU se necessário
+instalar_xemu
+
+# Adicionar o script ao .bashrc para execução automática no início
+if ! grep -q "xemu_interface.sh" ~/.bashrc; then
+    echo -e "${AMARELO}Adicionando o script ao .bashrc para execução automática...${NC}"
+    echo "bash ~/xemu_interface.sh" >> ~/.bashrc
+    echo -e "${VERDE}Configuração concluída.${NC}"
+else
+    echo -e "${VERDE}Script já está configurado para ser executado no início.${NC}"
+fi
 
 # Menu principal
 while true; do
-    echo "Selecione uma opção:"
-    echo "1) Converter ISOs para XISO"
-    echo "2) Iniciar um jogo"
-    echo "3) Sair"
+    echo -e "${AMARELO}Selecione uma opção:${NC}"
+    echo -e "1) Converter jogos para XISO"
+    echo -e "2) Iniciar um jogo"
+    echo -e "3) Sair"
     read -p "Opção: " opcao
     case $opcao in
-        1) converter_isos ;;
+        1) converter_jogos ;;
         2) iniciar_jogo ;;
         3) exit 0 ;;
-        *) echo "Opção inválida." ;;
+        *) echo -e "${VERMELHO}Opção inválida. Tente novamente.${NC}" ;;
     esac
 done
-EOF
-
-# Dá permissão de execução ao script de interface
-chmod +x "$HOME/xemu_interface.sh"
-
-# Configura o Termux para executar a interface automaticamente ao iniciar
-if ! grep -q 'bash ~/xemu_interface.sh' "$HOME/.bashrc"; then
-    echo 'bash ~/xemu_interface.sh' >> "$HOME/.bashrc"
-    echo "Configuração para iniciar a interface adicionada ao .bashrc."
-else
-    echo "A configuração para iniciar a interface já existe no .bashrc."
-fi
-
-echo "Instalação e configuração concluídas. Reinicie o Termux para iniciar a interface."
-
