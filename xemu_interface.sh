@@ -12,13 +12,15 @@ instalar_xemu() {
     echo -e "${AZUL}Verificando a instalação do XEMU...${NC}"
     if ! command -v xemu &> /dev/null; then
         echo -e "${AMARELO}XEMU não encontrado. Iniciando instalação...${NC}"
+
+        # Instalar dependências necessárias antes de instalar o XEMU
         apt update -y && \
-        apt upgrade -y && \
-        termux-setup-storage >/dev/null && \
-        apt install -y --no-install-recommends wget && \
+        yes | apt upgrade -y && \
+        yes | termux-setup-storage >/dev/null && \
+        apt install -y --no-install-recommends wget openbox && \
         wget -O xemu-arm64.deb "https://github.com/George-Seven/Termux-XEMU/releases/latest/download/xemu-arm64.deb" && \
-        apt install -y ./xemu-arm64.deb && \
-        rm xemu-arm64.deb
+        apt install ./xemu-arm64.deb
+
         echo -e "${VERDE}Instalação do XEMU concluída.${NC}"
     else
         echo -e "${VERDE}XEMU já está instalado.${NC}"
@@ -46,21 +48,13 @@ converter_jogos() {
     echo -e "${AMARELO}Conversão concluída. Arquivos salvos em ~/converted_xiso.${NC}"
 }
 
-# Função para listar e iniciar jogos da pasta /storage/emulated/0/Download/XEMU/
+# Função para listar e iniciar jogos
 iniciar_jogo() {
-    echo -e "${AZUL}Jogos disponíveis em /storage/emulated/0/Download/XEMU/:${NC}"
-    jogos=$(ls /storage/emulated/0/Download/XEMU/*.iso)
-    if [[ -z "$jogos" ]]; then
-        echo -e "${VERMELHO}Nenhum jogo encontrado na pasta de jogos.${NC}"
-        return
-    fi
-
-    select jogo in $jogos; do
+    echo -e "${AZUL}Jogos disponíveis na pasta:/storage/emulated/0/Download/XEMU:${NC}"
+    select jogo in /storage/emulated/0/Download/XEMU/*.iso; do
         if [[ -n "$jogo" ]]; then
             echo -e "${AMARELO}Iniciando $jogo...${NC}"
             xemu -dvd_path "$jogo"
-            # Remover logs após execução
-            rm -f /storage/emulated/0/Download/XEMU/*.log
             break
         else
             echo -e "${VERMELHO}Seleção inválida. Tente novamente.${NC}"
