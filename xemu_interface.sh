@@ -13,7 +13,15 @@ instalar_xemu() {
     if ! command -v xemu &> /dev/null; then
         echo -e "${AMARELO}XEMU não encontrado. Iniciando instalação...${NC}"
 
-        # Instalar dependências necessárias antes de instalar o XEMU
+        # Instalar pacotes necessários no Termux
+        pkg update
+        pkg upgrade
+        pkg install x11-repo
+        pkg install tigervnc
+        pkg install x
+term
+
+        # Instalar dependências adicionais e o XEMU
         apt update -y && \
         yes | apt upgrade -y && \
         yes | termux-setup-storage >/dev/null && \
