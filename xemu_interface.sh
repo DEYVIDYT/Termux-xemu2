@@ -33,6 +33,23 @@ instalar_xemu() {
     fi
 }
 
+# Função para configurar o ambiente gráfico e iniciar o XEMU
+iniciar_xemu() {
+    echo -e "${AMARELO}Inicializando o ambiente gráfico...${NC}"
+
+    # Configurar o display
+    export DISPLAY=:1
+    kill -9 $(pgrep -f "termux.x11") 2>/dev/null
+
+    if command -v openbox-session >/dev/null 2>&1; then
+        termux-x11 -ac -xstartup openbox-session :1 2>/dev/null
+    else
+        termux-x11 -ac :1
+    fi &
+    
+    echo -e "${VERDE}Ambiente gráfico inicializado.${NC}"
+}
+
 # Função para converter jogos para XISO usando iso2xiso
 converter_jogos() {
     echo -e "${AMARELO}Iniciando a conversão de jogos para XISO...${NC}"
@@ -44,11 +61,13 @@ converter_jogos() {
             iso2xiso "$iso" "~/converted_xiso/${nome_jogo}.xiso"
             if [[ $? -eq 0 ]]; then
                 echo -e "${VERDE}Convertido: $iso para ~/converted_xiso/${nome_jogo}.xiso${NC}"
-                rm "$iso"  # Deleta a ISO original após conversão
-                echo -e "${VERDE}Deletado o arquivo ISO original: $iso${NC}"
+                # Não deleta o arquivo ISO original se o convertido já existir
+                echo -e "${VERDE}ISO original preservada: $iso${NC}"
             else
                 echo -e "${VERMELHO}Erro na conversão de $iso${NC}"
             fi
+        else
+            echo -e "${AMARELO}O arquivo convertido já existe. Pulando: $iso${NC}"
         fi
     done
     echo -e "${AMARELO}Conversão concluída. Arquivos salvos em ~/converted_xiso.${NC}"
@@ -60,6 +79,7 @@ iniciar_jogo() {
     select jogo in /storage/emulated/0/Download/XEMU/*.iso; do
         if [[ -n "$jogo" ]]; then
             echo -e "${AMARELO}Iniciando $jogo...${NC}"
+            iniciar_xemu
             xemu -dvd_path "$jogo"
             break
         else
